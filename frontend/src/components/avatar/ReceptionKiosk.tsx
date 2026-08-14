@@ -313,10 +313,10 @@ export function ReceptionKiosk() {
   if (!started) {
     return (
       <div className="relative w-screen h-screen overflow-hidden bg-avatar-bg select-none">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-avatar-accent/20 rounded-full blur-3xl animate-pulse-slow" />
-          <div className="absolute bottom-1/3 right-1/4 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1a1508] via-[#0f0d08] to-[#0a0905]" />
+        <div className="absolute inset-0 opacity-25">
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-amber-600/20 rounded-full blur-3xl animate-pulse-slow" />
+          <div className="absolute bottom-1/3 right-1/4 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl animate-pulse-slow" />
         </div>
 
         <div className="relative z-10 flex flex-col items-center justify-center h-full gap-8">
@@ -325,7 +325,7 @@ export function ReceptionKiosk() {
 
           {/* Welcome text */}
           <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+            <h1 className="text-3xl md:text-4xl font-bold text-amber-100 mb-3">
               AI Office Assistant
             </h1>
             <p className="text-slate-400 text-lg">
@@ -336,7 +336,7 @@ export function ReceptionKiosk() {
           {/* START button — unlocks TTS + Mic */}
           <motion.button
             onClick={handleStart}
-            className="px-10 py-4 bg-gradient-to-r from-avatar-accent to-cyan-400 text-white text-xl font-semibold rounded-2xl shadow-lg shadow-avatar-accent/30 hover:shadow-avatar-accent/50 transition-shadow"
+            className="px-10 py-4 bg-gradient-to-r from-amber-600 to-amber-400 text-black text-xl font-semibold rounded-2xl shadow-lg shadow-amber-600/30 hover:shadow-amber-500/50 transition-shadow"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             animate={{ scale: [1, 1.02, 1] }}
@@ -345,7 +345,7 @@ export function ReceptionKiosk() {
             🎤 Start Conversation
           </motion.button>
 
-          <p className="text-slate-500 text-sm max-w-md text-center">
+          <p className="text-amber-200/40 text-sm max-w-md text-center">
             Click to begin. The assistant will speak to you and listen for your responses automatically.
           </p>
         </div>
@@ -355,11 +355,12 @@ export function ReceptionKiosk() {
 
   // ===== MAIN KIOSK UI =====
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-avatar-bg select-none">
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-avatar-accent/20 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-1/3 right-1/4 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl animate-pulse-slow" />
+    <div className="relative w-screen h-screen overflow-hidden select-none" style={{ background: "#0a0905" }}>
+      <div className="absolute inset-0 bg-gradient-to-b from-[#1a1508] via-[#0f0d08] to-[#0a0905]" />
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-amber-600/15 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-1/3 right-1/4 w-48 h-48 bg-amber-500/8 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute top-1/2 right-1/3 w-40 h-40 bg-amber-400/5 rounded-full blur-2xl" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center justify-between h-full p-6">
