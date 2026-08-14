@@ -164,10 +164,21 @@ export function ReceptionKiosk() {
 
     synth.speak(utter);
 
-    // Chrome bug: speechSynthesis can get stuck. Force-resume.
+    // Chrome bug fix: speechSynthesis stops after ~15s. Resume it periodically.
+    const chromeFix = setInterval(() => {
+      if (synth.speaking && !synth.paused) {
+        synth.pause();
+        synth.resume();
+      } else if (!synth.speaking) {
+        clearInterval(chromeFix);
+      }
+    }, 5000);
+
+    // Watchdog: detect if speech got stuck
     const watchdog = setInterval(() => {
       if (!synth.speaking) {
         clearInterval(watchdog);
+        clearInterval(chromeFix);
         if (isSpeakingRef.current) {
           isSpeakingRef.current = false;
           setIsSpeaking(false);
@@ -177,9 +188,10 @@ export function ReceptionKiosk() {
       }
     }, 500);
 
-    // Safety timeout (max 15 seconds for any utterance)
+    // Safety timeout (max 20 seconds for any utterance)
     setTimeout(() => {
       clearInterval(watchdog);
+      clearInterval(chromeFix);
       if (isSpeakingRef.current) {
         synth.cancel();
         isSpeakingRef.current = false;
@@ -187,7 +199,7 @@ export function ReceptionKiosk() {
         setAvatarState("listening");
         startMic();
       }
-    }, 15000);
+    }, 20000);
   }, [setAvatarState, setCurrentCaption, setIsSpeaking]);
 
   // ===== MIC: Continuous speech recognition =====

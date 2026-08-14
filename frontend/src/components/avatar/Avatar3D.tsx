@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { AvatarState } from "@/store/avatarStore";
 
@@ -9,174 +9,179 @@ interface Avatar3DProps {
   isSpeaking: boolean;
 }
 
-// Your CodeOrigin.ai avatar image - place this file in /frontend/public/avatar.png
-// For now using the direct image path
-const AVATAR_IMAGE = "/avatar.png";
-
 /**
- * Avatar3D - Uses the CodeOrigin.ai corporate AI avatar image
- * with animated overlays for speaking, listening, and state effects.
+ * Avatar3D - Real Human Avatar
  * 
- * Professional futuristic AI receptionist with gold/dark theme.
+ * Uses a REAL human video/image for the avatar display.
+ * 
+ * HOW TO SET UP YOUR REAL AVATAR:
+ * 
+ * Option 1 (RECOMMENDED): Use a talking-head video
+ *   - Record a real person (professional woman/man) speaking
+ *   - Save as: frontend/public/avatar-speaking.mp4 (person talking)
+ *   - Save as: frontend/public/avatar-idle.mp4 (person idle/smiling, loop)
+ *   - Save as: frontend/public/avatar.png (still photo fallback)
+ * 
+ * Option 2: Use a service like D-ID, HeyGen, or Synthesia
+ *   - Generate a realistic AI talking head video
+ *   - Export the video files
+ * 
+ * Option 3: Use a high-quality photo (current fallback)
+ *   - Save a real professional headshot as frontend/public/avatar.png
+ *   - The system will animate with overlays
+ * 
+ * The avatar switches between idle video and speaking video
+ * based on the current state.
  */
 export function Avatar3D({ state, isSpeaking }: Avatar3DProps) {
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const speakingVideoRef = useRef<HTMLVideoElement>(null);
+  const idleVideoRef = useRef<HTMLVideoElement>(null);
+  const [hasVideo, setHasVideo] = useState(false);
+  const [hasIdleVideo, setHasIdleVideo] = useState(false);
+
+  // Control video playback based on state
+  useEffect(() => {
+    if (isSpeaking && speakingVideoRef.current && hasVideo) {
+      speakingVideoRef.current.play().catch(() => {});
+      if (idleVideoRef.current) idleVideoRef.current.pause();
+    } else {
+      if (speakingVideoRef.current) speakingVideoRef.current.pause();
+      if (idleVideoRef.current && hasIdleVideo) idleVideoRef.current.play().catch(() => {});
+    }
+  }, [isSpeaking, hasVideo, hasIdleVideo]);
 
   return (
-    <div className="relative w-80 h-80 md:w-[420px] md:h-[420px] lg:w-[480px] lg:h-[480px]">
+    <div className="relative w-80 h-80 md:w-[400px] md:h-[400px] lg:w-[460px] lg:h-[460px]">
       
-      {/* === OUTER GLOW RINGS === */}
+      {/* === OUTER EFFECTS === */}
       
-      {/* Pulsing outer ring */}
+      {/* Animated glow ring */}
       <motion.div
         className="absolute -inset-4 rounded-full"
         animate={{
-          boxShadow: state === "speaking"
+          boxShadow: isSpeaking
             ? [
-                "0 0 30px rgba(212,175,55,0.4), 0 0 60px rgba(212,175,55,0.2), 0 0 100px rgba(212,175,55,0.1)",
-                "0 0 50px rgba(212,175,55,0.6), 0 0 90px rgba(212,175,55,0.3), 0 0 130px rgba(212,175,55,0.15)",
-                "0 0 30px rgba(212,175,55,0.4), 0 0 60px rgba(212,175,55,0.2), 0 0 100px rgba(212,175,55,0.1)",
+                "0 0 40px rgba(212,175,55,0.4), 0 0 80px rgba(212,175,55,0.15)",
+                "0 0 60px rgba(212,175,55,0.6), 0 0 120px rgba(212,175,55,0.25)",
+                "0 0 40px rgba(212,175,55,0.4), 0 0 80px rgba(212,175,55,0.15)",
               ]
             : state === "listening"
             ? [
-                "0 0 25px rgba(34,197,94,0.3), 0 0 50px rgba(34,197,94,0.15)",
-                "0 0 40px rgba(34,197,94,0.5), 0 0 80px rgba(34,197,94,0.2)",
-                "0 0 25px rgba(34,197,94,0.3), 0 0 50px rgba(34,197,94,0.15)",
+                "0 0 20px rgba(34,197,94,0.3), 0 0 50px rgba(34,197,94,0.1)",
+                "0 0 35px rgba(34,197,94,0.4), 0 0 70px rgba(34,197,94,0.15)",
+                "0 0 20px rgba(34,197,94,0.3), 0 0 50px rgba(34,197,94,0.1)",
               ]
-            : state === "thinking"
-            ? "0 0 30px rgba(234,179,8,0.3), 0 0 60px rgba(234,179,8,0.15)"
-            : state === "greeting"
-            ? [
-                "0 0 30px rgba(212,175,55,0.3), 0 0 70px rgba(212,175,55,0.15)",
-                "0 0 50px rgba(212,175,55,0.5), 0 0 100px rgba(212,175,55,0.2)",
-                "0 0 30px rgba(212,175,55,0.3), 0 0 70px rgba(212,175,55,0.15)",
-              ]
-            : "0 0 15px rgba(212,175,55,0.1), 0 0 30px rgba(212,175,55,0.05)"
+            : "0 0 15px rgba(212,175,55,0.1)"
         }}
-        transition={{ repeat: Infinity, duration: state === "speaking" ? 1.2 : 2.5, ease: "easeInOut" }}
+        transition={{ repeat: Infinity, duration: isSpeaking ? 1 : 2.5, ease: "easeInOut" }}
       />
 
-      {/* Rotating gold ring */}
+      {/* Rotating ring */}
       <motion.div
-        className="absolute -inset-2 rounded-full border border-amber-500/20"
+        className={`absolute -inset-2 rounded-full border transition-colors duration-500 ${
+          isSpeaking ? "border-amber-400/40" :
+          state === "listening" ? "border-green-400/25" :
+          "border-amber-600/15"
+        }`}
         animate={{ rotate: 360 }}
-        transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
+        transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
         style={{ borderStyle: "dashed" }}
       />
 
-      {/* Inner solid ring */}
+      {/* === MAIN AVATAR CONTAINER === */}
       <motion.div
-        className={`absolute -inset-1 rounded-full border-2 transition-colors duration-700 ${
-          state === "speaking" ? "border-amber-400/50" :
-          state === "listening" ? "border-green-400/40" :
-          state === "thinking" ? "border-yellow-400/30" :
-          "border-amber-600/20"
-        }`}
-        animate={state === "speaking" ? { scale: [1, 1.01, 1] } : {}}
-        transition={{ repeat: Infinity, duration: 0.8 }}
-      />
-
-      {/* === MAIN AVATAR IMAGE === */}
-      <motion.div
-        className="relative w-full h-full rounded-full overflow-hidden shadow-2xl shadow-amber-900/30"
+        className="relative w-full h-full rounded-full overflow-hidden shadow-2xl shadow-black/50 border-2 border-amber-700/30"
         animate={{
-          y: state === "idle" ? [0, -3, 0] : state === "speaking" ? [0, -2, 0] : 0,
-          scale: state === "greeting" ? [1, 1.02, 1] : 1,
+          y: state === "idle" ? [0, -2, 0] : 0,
+          scale: isSpeaking ? [1, 1.005, 1] : 1,
         }}
-        transition={{
-          y: { repeat: Infinity, duration: state === "speaking" ? 2 : 5, ease: "easeInOut" },
-          scale: { duration: 0.8, repeat: state === "greeting" ? 1 : 0 },
-        }}
+        transition={{ repeat: Infinity, duration: isSpeaking ? 2 : 6, ease: "easeInOut" }}
       >
-        {/* The actual avatar image */}
-        <img
-          src={AVATAR_IMAGE}
-          alt="AI Office Avatar"
-          className="w-full h-full object-cover object-top"
-          onLoad={() => setImageLoaded(true)}
-          onError={(e) => {
-            // Fallback to a gradient if image not found
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
+        {/* Speaking video (real person talking) */}
+        <video
+          ref={speakingVideoRef}
+          src="/avatar-speaking.mp4"
+          className={`absolute inset-0 w-full h-full object-cover ${isSpeaking && hasVideo ? "opacity-100" : "opacity-0"}`}
+          muted
+          loop
+          playsInline
+          onCanPlay={() => setHasVideo(true)}
+          onError={() => setHasVideo(false)}
         />
 
-        {/* Fallback if image not loaded */}
-        {!imageLoaded && (
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2a1f0f] via-[#1a1508] to-[#0f0d05] flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center mb-3 mx-auto">
-                <span className="text-3xl font-bold text-white">C</span>
-              </div>
-              <p className="text-amber-400/60 text-xs">CodeOrigin.ai</p>
-            </div>
-          </div>
-        )}
+        {/* Idle video (real person idle/smiling) */}
+        <video
+          ref={idleVideoRef}
+          src="/avatar-idle.mp4"
+          className={`absolute inset-0 w-full h-full object-cover ${!isSpeaking && hasIdleVideo ? "opacity-100" : "opacity-0"}`}
+          muted
+          loop
+          playsInline
+          autoPlay
+          onCanPlay={() => setHasIdleVideo(true)}
+          onError={() => setHasIdleVideo(false)}
+        />
+
+        {/* Still image fallback (always shown underneath) */}
+        <img
+          src="/avatar.png"
+          alt="AI Assistant"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ zIndex: -1 }}
+        />
 
         {/* === SPEAKING OVERLAY EFFECTS === */}
         {isSpeaking && (
           <>
-            {/* Sound wave ring pulse */}
+            {/* Pulse rings */}
             <motion.div
-              className="absolute inset-0 rounded-full border-2 border-amber-400/30"
-              animate={{ scale: [1, 1.08, 1], opacity: [0.6, 0, 0.6] }}
-              transition={{ repeat: Infinity, duration: 1, ease: "easeOut" }}
+              className="absolute inset-0 rounded-full border-2 border-amber-400/25"
+              animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0, 0.5] }}
+              transition={{ repeat: Infinity, duration: 1.2 }}
             />
             <motion.div
-              className="absolute inset-0 rounded-full border border-amber-300/20"
-              animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0, 0.4] }}
-              transition={{ repeat: Infinity, duration: 1, ease: "easeOut", delay: 0.3 }}
+              className="absolute inset-0 rounded-full border border-amber-300/15"
+              animate={{ scale: [1, 1.12, 1], opacity: [0.3, 0, 0.3] }}
+              transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}
             />
-
-            {/* Bottom glow (voice emanating) */}
+            
+            {/* Voice glow at bottom */}
             <motion.div
-              className="absolute bottom-0 left-0 right-0 h-[30%] bg-gradient-to-t from-amber-500/15 to-transparent rounded-b-full"
-              animate={{ opacity: [0.3, 0.7, 0.3] }}
-              transition={{ repeat: Infinity, duration: 0.5 }}
+              className="absolute bottom-0 left-0 right-0 h-[25%] bg-gradient-to-t from-amber-500/20 to-transparent rounded-b-full"
+              animate={{ opacity: [0.4, 0.8, 0.4] }}
+              transition={{ repeat: Infinity, duration: 0.4 }}
             />
           </>
         )}
 
-        {/* === LISTENING OVERLAY === */}
+        {/* Listening indicator */}
         {state === "listening" && !isSpeaking && (
           <motion.div
-            className="absolute inset-0 rounded-full"
-            animate={{
-              boxShadow: [
-                "inset 0 0 20px rgba(34,197,94,0.05)",
-                "inset 0 0 40px rgba(34,197,94,0.1)",
-                "inset 0 0 20px rgba(34,197,94,0.05)",
-              ]
-            }}
+            className="absolute inset-0 rounded-full border-2 border-green-400/15"
+            animate={{ scale: [1, 1.02, 1], opacity: [0.3, 0.6, 0.3] }}
             transition={{ repeat: Infinity, duration: 2 }}
           />
         )}
 
-        {/* === THINKING OVERLAY === */}
+        {/* Thinking overlay */}
         {state === "thinking" && (
           <motion.div
-            className="absolute inset-0 rounded-full bg-amber-500/5"
-            animate={{ opacity: [0, 0.1, 0] }}
-            transition={{ repeat: Infinity, duration: 1 }}
+            className="absolute inset-0 bg-amber-500/5 rounded-full"
+            animate={{ opacity: [0, 0.08, 0] }}
+            transition={{ repeat: Infinity, duration: 0.8 }}
           />
         )}
       </motion.div>
 
-      {/* === AUDIO WAVEFORM (visible when speaking) === */}
+      {/* === AUDIO WAVEFORM (speaking) === */}
       {isSpeaking && (
-        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex items-end gap-[3px]">
-          {Array.from({ length: 9 }).map((_, i) => (
+        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-[2px]">
+          {Array.from({ length: 11 }).map((_, i) => (
             <motion.div
               key={i}
-              className="w-[3px] bg-gradient-to-t from-amber-500 to-amber-300 rounded-full"
-              animate={{
-                height: [4, 12 + Math.random() * 16, 4],
-              }}
-              transition={{
-                repeat: Infinity,
-                duration: 0.4 + Math.random() * 0.3,
-                delay: i * 0.05,
-                ease: "easeInOut",
-              }}
+              className="w-[3px] bg-gradient-to-t from-amber-500 to-amber-300 rounded-full opacity-80"
+              animate={{ height: [3, 8 + Math.random() * 14, 3] }}
+              transition={{ repeat: Infinity, duration: 0.3 + Math.random() * 0.3, delay: i * 0.04, ease: "easeInOut" }}
             />
           ))}
         </div>
@@ -186,21 +191,21 @@ export function Avatar3D({ state, isSpeaking }: Avatar3DProps) {
       <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-10">
         <motion.div
           className={`px-5 py-2 rounded-full text-sm font-medium backdrop-blur-md border shadow-lg ${
-            state === "idle" ? "bg-slate-900/90 text-amber-300/70 border-amber-600/20" :
-            state === "listening" ? "bg-slate-900/90 text-green-300 border-green-500/40" :
-            state === "speaking" ? "bg-slate-900/90 text-amber-300 border-amber-400/50" :
-            state === "thinking" ? "bg-slate-900/90 text-yellow-300 border-yellow-500/30" :
-            state === "greeting" ? "bg-slate-900/90 text-amber-300 border-amber-400/40" :
-            "bg-slate-900/90 text-slate-300 border-slate-600/50"
+            state === "idle" ? "bg-black/80 text-amber-300/70 border-amber-600/20" :
+            state === "listening" ? "bg-black/80 text-green-300 border-green-500/40" :
+            isSpeaking ? "bg-black/80 text-amber-300 border-amber-400/50" :
+            state === "thinking" ? "bg-black/80 text-yellow-300 border-yellow-500/30" :
+            state === "greeting" ? "bg-black/80 text-amber-300 border-amber-400/40" :
+            "bg-black/80 text-slate-300 border-slate-600/50"
           }`}
-          animate={state === "speaking" ? { scale: [1, 1.03, 1] } : state === "listening" ? { scale: [1, 1.02, 1] } : {}}
+          animate={isSpeaking ? { scale: [1, 1.03, 1] } : state === "listening" ? { scale: [1, 1.02, 1] } : {}}
           transition={{ repeat: Infinity, duration: 1.5 }}
         >
           {state === "idle" && "● Ready"}
           {state === "greeting" && "✨ Hello!"}
           {state === "listening" && "🎤 Listening..."}
           {state === "thinking" && "⚡ Processing..."}
-          {state === "speaking" && "🔊 Speaking"}
+          {isSpeaking && "🔊 Speaking"}
           {state === "goodbye" && "👋 Goodbye!"}
           {state === "error" && "⚠️ Error"}
         </motion.div>
