@@ -1,0 +1,106 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: avatar_postgres
+    environment:
+      POSTGRES_DB: avatar_db
+      POSTGRES_USER: avatar
+      POSTGRES_PASSWORD: avatar_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avatar"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: avatar_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: avatar_backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://avatar:avatar_password@postgres:5432/avatar_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production-use-strong-key}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - DEBUG=true
+      - ENVIRONMENT=development
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app
+    restart: unless-stopped
+
+  # Frontend - Kiosk & Admin Dashboard
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: avatar_frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
+    restart: unless-stopped
+
+  # CV Service (edge - would typically run on separate device)
+  cv-service:
+    build:
+      context: ../cv-service
+      dockerfile: ../docker/Dockerfile.cv
+    container_name: avatar_cv
+    environment:
+      - BACKEND_URL=http://backend:8000/api/v1
+      - CAMERA_INDEX=0
+      - PERSON_CONFIDENCE_THRESHOLD=0.75
+      - LIVENESS_ENABLED=true
+    devices:
+      - /dev/video0:/dev/video0  # Camera access
+    depends_on:
+      - backend
+    restart: unless-stopped
+    profiles:
+      - with-camera  # Only start if camera available
+
+volumes:
+  postgres_data:
+  redis_data:
