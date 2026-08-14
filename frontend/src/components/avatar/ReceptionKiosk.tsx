@@ -6,437 +6,293 @@ import { Avatar3D } from "./Avatar3D";
 import { CaptionDisplay } from "./CaptionDisplay";
 import { SuggestionButtons } from "./SuggestionButtons";
 import { StatusIndicator } from "./StatusIndicator";
-import { aiApi } from "@/lib/api";
 
-/**
- * Local demo AI - provides intelligent responses when backend is unavailable.
- */
-function getDemoResponse(message: string): { response: string; mode: string; suggestions: string[] } {
-  const msg = message.toLowerCase();
+// ===== INSTANT LOCAL AI - No network calls, zero delay =====
+function getInstantResponse(message: string): { response: string; mode: string; suggestions: string[] } {
+  const msg = message.toLowerCase().trim();
 
   if (msg.includes("meeting") || msg.includes("client") || msg.includes("appointment")) {
-    return {
-      response: "Welcome! Who are you here to meet? I can check if they're available and notify them of your arrival.",
-      mode: "client",
-      suggestions: ["I have an appointment with the manager", "I'm meeting the admissions team", "Can you check if Rahul is available?"],
-    };
+    return { response: "Welcome! Who are you here to meet? I can check their availability right now.", mode: "client", suggestions: ["The manager", "Admissions team", "HR department"] };
   }
-  if (msg.includes("course") || msg.includes("learn") || msg.includes("python") || msg.includes("training")) {
-    return {
-      response: "I'd be happy to help with course information! We offer programs in Python, Java, DevOps, AWS, AI/ML, Web Development, and more. Are you a beginner or do you have prior programming experience?",
-      mode: "student",
-      suggestions: ["I'm a complete beginner", "I have some experience", "What are the fees?", "When does the next batch start?"],
-    };
+  if (msg.includes("course") || msg.includes("learn") || msg.includes("python") || msg.includes("java") || msg.includes("training") || msg.includes("devops") || msg.includes("aws")) {
+    return { response: "We offer Python, Java, DevOps, AWS, AI, Web Development and more. Are you a beginner or experienced?", mode: "student", suggestions: ["I'm a beginner", "I have experience", "What are the fees?", "Next batch?"] };
   }
-  if (msg.includes("job") || msg.includes("career") || msg.includes("position") || msg.includes("opening")) {
-    return {
-      response: "We have several open positions! Could you tell me about your experience and the kind of role you're looking for? We currently have openings for Python Developer, DevOps Engineer, Full Stack Developer, and more.",
-      mode: "job",
-      suggestions: ["I'm a Python developer with 3 years experience", "What positions are available?", "How do I submit my resume?"],
-    };
+  if (msg.includes("job") || msg.includes("career") || msg.includes("position") || msg.includes("work here") || msg.includes("vacancy")) {
+    return { response: "We have openings for Python Developer, DevOps Engineer, Full Stack Developer and more. What's your experience?", mode: "job", suggestions: ["Python developer", "3 years experience", "Submit resume", "Available roles?"] };
   }
   if (msg.includes("internship") || msg.includes("intern")) {
-    return {
-      response: "Great! We offer internship programs in Python, AWS, DevOps, AI/ML, Web Development, and more. What's your current education level and which area interests you?",
-      mode: "internship",
-      suggestions: ["I'm interested in Python/AI", "I'm a final year student", "What's the duration?", "Is it paid?"],
-    };
+    return { response: "We offer internships in Python, AWS, DevOps, AI, and Web Development. Which area interests you?", mode: "internship", suggestions: ["Python/AI", "Cloud/AWS", "Web Development", "Duration?"] };
   }
-  if (msg.includes("beginner") || msg.includes("new to programming")) {
-    return {
-      response: "Perfect! For beginners, I'd recommend starting with our Python Fundamentals course. It's a 3-month program covering basics to intermediate concepts with hands-on projects. Would you like details on fees, schedule, or syllabus?",
-      mode: "student",
-      suggestions: ["What are the fees?", "What's the schedule?", "Do you provide certificates?", "Is placement assistance available?"],
-    };
+  if (msg.includes("beginner") || msg.includes("new") || msg.includes("start")) {
+    return { response: "Our Python Fundamentals course is perfect for beginners. 3 months, hands-on projects, certification included. Want to know about fees or schedule?", mode: "student", suggestions: ["Fees?", "Schedule?", "Certificate?", "Placement?"] };
   }
-  if (msg.includes("fee") || msg.includes("cost") || msg.includes("price")) {
-    return {
-      response: "Our course fees vary by program. For the most accurate and current fee information, I'd recommend speaking with our admissions counsellor. Would you like me to connect you with them?",
-      mode: "admission",
-      suggestions: ["Yes, connect me with admissions", "What about payment options?", "Are there any discounts?"],
-    };
+  if (msg.includes("fee") || msg.includes("cost") || msg.includes("price") || msg.includes("how much")) {
+    return { response: "Course fees vary by program. Shall I connect you with our admissions counsellor for exact pricing and payment options?", mode: "admission", suggestions: ["Yes, connect me", "Payment options?", "Any discounts?"] };
   }
-  if (msg.includes("experience") || msg.includes("years")) {
-    return {
-      response: "That's great! With your experience, you might be a good fit for our advanced programs or even our job openings. Would you like to explore advanced courses, or are you looking for job opportunities with us?",
-      mode: "general",
-      suggestions: ["Tell me about advanced courses", "I'm looking for a job", "What's the admission process?"],
-    };
+  if (msg.includes("experience") || msg.includes("years") || msg.includes("senior") || msg.includes("advanced")) {
+    return { response: "With your experience, our advanced programs or job opportunities might be perfect. What would you prefer?", mode: "general", suggestions: ["Advanced courses", "Job opportunities", "Both"] };
   }
-  if (msg.includes("name is") || msg.includes("i am") || msg.includes("i'm")) {
-    const nameMatch = msg.match(/(?:name is|i am|i'm)\s+(\w+)/i);
+  if (msg.includes("name is") || msg.includes("i am ") || msg.includes("i'm ") || msg.includes("myself")) {
+    const nameMatch = msg.match(/(?:name is|i am|i'm|myself)\s+(\w+)/i);
     const name = nameMatch ? nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1) : "there";
-    return {
-      response: `Nice to meet you, ${name}! What brings you to our office today? I can help with course enquiries, job opportunities, internships, or meeting someone from our team.`,
-      mode: "reception",
-      suggestions: ["I want to inquire about courses", "I'm looking for a job", "I have a meeting", "I'm looking for an internship"],
-    };
+    return { response: `Nice to meet you, ${name}! What brings you here today?`, mode: "reception", suggestions: ["Course enquiry", "Job opportunity", "Meeting someone", "Internship"] };
   }
-  if (msg.includes("thank") || msg.includes("bye") || msg.includes("that's all")) {
-    return {
-      response: "Thank you for visiting! It was great talking with you. Have a wonderful day!",
-      mode: "reception",
-      suggestions: [],
-    };
+  if (msg.includes("thank") || msg.includes("bye") || msg.includes("that's all") || msg.includes("done")) {
+    return { response: "Thank you for visiting! Have a wonderful day!", mode: "reception", suggestions: [] };
   }
-  if (msg.includes("human") || msg.includes("real person") || msg.includes("someone")) {
-    return {
-      response: "Of course! I'll connect you with our reception team right away. Please have a seat and someone will be with you shortly.",
-      mode: "reception",
-      suggestions: ["Thank you"],
-    };
+  if (msg.includes("human") || msg.includes("person") || msg.includes("someone") || msg.includes("staff")) {
+    return { response: "I'll connect you with our team right away. Please have a seat.", mode: "reception", suggestions: [] };
+  }
+  if (msg.includes("hello") || msg.includes("hi") || msg.includes("hey") || msg.includes("good")) {
+    return { response: "Hello! Welcome to our office. How can I help you today?", mode: "reception", suggestions: ["Course enquiry", "Job opportunity", "Meeting someone", "Internship"] };
+  }
+  if (msg.includes("schedule") || msg.includes("timing") || msg.includes("batch") || msg.includes("when")) {
+    return { response: "We have morning, afternoon, and weekend batches available. The next batch starts within 2 weeks. Which timing works for you?", mode: "student", suggestions: ["Morning", "Afternoon", "Weekend", "Online?"] };
+  }
+  if (msg.includes("certificate") || msg.includes("certification")) {
+    return { response: "Yes! All our courses include industry-recognized certificates upon completion. Is there anything else you'd like to know?", mode: "student", suggestions: ["Placement help?", "Course duration?", "Register now"] };
+  }
+  if (msg.includes("placement") || msg.includes("job assist")) {
+    return { response: "We provide placement assistance including resume building, mock interviews, and job referrals to our partner companies.", mode: "student", suggestions: ["Partner companies?", "Success rate?", "Register"] };
+  }
+  if (msg.includes("online") || msg.includes("offline") || msg.includes("remote")) {
+    return { response: "We offer both online and offline modes. Online classes are live with the same trainer. Which do you prefer?", mode: "student", suggestions: ["Online", "Offline", "Both available?"] };
+  }
+  if (msg.includes("manager") || msg.includes("hr") || msg.includes("admissions") || msg.includes("department")) {
+    return { response: "I'll notify them that you've arrived. May I know your name for the notification?", mode: "client", suggestions: ["My name is...", "I have an appointment"] };
+  }
+  if (msg.includes("resume") || msg.includes("cv")) {
+    return { response: "You can share your resume via email or scan the QR code I'll display. Which would you prefer?", mode: "job", suggestions: ["Email", "QR code", "Later"] };
   }
 
-  return {
-    response: "I'd be happy to help you! Could you tell me a bit more about what brings you here today? I can assist with course enquiries, job opportunities, internships, appointments, or general information about our office.",
-    mode: "reception",
-    suggestions: ["I want to inquire about courses", "I'm looking for a job", "I have an appointment", "I'm looking for an internship"],
-  };
+  return { response: "I can help with courses, jobs, internships, or connect you with our team. What would you like?", mode: "reception", suggestions: ["Courses", "Jobs", "Internships", "Meet someone"] };
 }
 
 /**
- * ReceptionKiosk - Main kiosk display component.
- * 
- * FULLY VOICE-DRIVEN:
- * - Avatar SPEAKS responses automatically using Text-to-Speech
- * - Microphone is ALWAYS LISTENING (continuous speech recognition)
- * - No need to press buttons — just talk naturally
- * - Suggestion buttons remain as visual aid / touch fallback
+ * ReceptionKiosk - INSTANT voice-driven kiosk.
+ * Zero delay. No API calls. Pure local interaction.
  */
 export function ReceptionKiosk() {
   const {
-    avatarState,
-    setAvatarState,
-    sessionActive,
-    sessionId,
-    startSession,
-    endSession,
-    mode,
-    setMode,
-    addMessage,
-    visitorName,
-    setVisitorName,
-    isSpeaking,
-    currentCaption,
-    setCurrentCaption,
-    suggestions,
-    setSuggestions,
-    showQR,
-    language,
+    avatarState, setAvatarState, sessionActive, sessionId, startSession,
+    endSession, mode, setMode, addMessage, visitorName, setVisitorName,
+    isSpeaking, currentCaption, setCurrentCaption, suggestions, setSuggestions,
     setIsSpeaking,
   } = useAvatarStore();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [visitorTranscript, setVisitorTranscript] = useState("");
-  const [micStatus, setMicStatus] = useState<"off" | "listening" | "heard">("off");
-  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [micStatus, setMicStatus] = useState<"off" | "on" | "heard">("off");
   const recognitionRef = useRef<any>(null);
-  const synthRef = useRef<SpeechSynthesis | null>(null);
-  const isCurrentlySpeaking = useRef(false);
-  const autoRestartRef = useRef(true);
+  const isSpeakingRef = useRef(false);
+  const shouldListenRef = useRef(true);
 
-  // ===== TEXT-TO-SPEECH: Avatar speaks out loud =====
-  const speakText = useCallback((text: string) => {
-    if (typeof window === "undefined") return;
-    
-    const synth = window.speechSynthesis;
-    synthRef.current = synth;
-    
-    // Cancel any ongoing speech
-    synth.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language === "hi" ? "hi-IN" : language === "kn" ? "kn-IN" : "en-US";
-    utterance.rate = 0.95;
-    utterance.pitch = 1.05;
-    utterance.volume = 1;
-    
-    // Try to get a natural female voice
-    const voices = synth.getVoices();
-    const preferredVoice = voices.find(
-      (v) => v.lang.startsWith("en") && v.name.toLowerCase().includes("female")
-    ) || voices.find(
-      (v) => v.lang.startsWith("en") && (v.name.includes("Samantha") || v.name.includes("Zira") || v.name.includes("Google"))
-    ) || voices.find(
-      (v) => v.lang.startsWith("en")
-    );
-    
-    if (preferredVoice) utterance.voice = preferredVoice;
-    
-    utterance.onstart = () => {
-      isCurrentlySpeaking.current = true;
-      setIsSpeaking(true);
+  // ===== SPEAK: Avatar talks instantly =====
+  const speak = useCallback((text: string, onDone?: () => void) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      // No TTS available — just show caption
+      setCurrentCaption(text);
       setAvatarState("speaking");
-      // Pause listening while avatar is speaking to prevent feedback
-      stopListening();
-    };
-    
-    utterance.onend = () => {
-      isCurrentlySpeaking.current = false;
-      setIsSpeaking(false);
-      setAvatarState("listening");
-      // Resume listening after avatar finishes speaking
+      setIsSpeaking(true);
+      isSpeakingRef.current = true;
+      const duration = Math.max(1500, text.length * 45);
       setTimeout(() => {
-        startListening();
-      }, 500);
-    };
-    
-    utterance.onerror = () => {
-      isCurrentlySpeaking.current = false;
-      setIsSpeaking(false);
-      setAvatarState("listening");
-      setTimeout(() => startListening(), 500);
-    };
-    
-    synth.speak(utterance);
-  }, [language, setIsSpeaking, setAvatarState]);
-
-  // ===== SPEECH RECOGNITION: Always listening for visitor =====
-  const startListening = useCallback(() => {
-    if (typeof window === "undefined" || isCurrentlySpeaking.current) return;
-    
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setMicStatus("off");
+        isSpeakingRef.current = false;
+        setIsSpeaking(false);
+        setAvatarState("listening");
+        onDone?.();
+      }, duration);
       return;
     }
 
-    // Don't restart if already running
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
-    }
+    const synth = window.speechSynthesis;
+    synth.cancel(); // Kill any pending speech
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = language === "hi" ? "hi-IN" : language === "kn" ? "kn-IN" : "en-US";
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 1.0;
+    utter.pitch = 1.05;
+    utter.volume = 1.0;
+    utter.lang = "en-US";
 
-    recognition.onstart = () => {
-      setMicStatus("listening");
+    // Pick best voice
+    const voices = synth.getVoices();
+    const voice = voices.find(v => v.name.includes("Google") && v.lang.startsWith("en")) 
+      || voices.find(v => v.name.includes("Samantha"))
+      || voices.find(v => v.name.includes("Zira"))
+      || voices.find(v => v.lang.startsWith("en") && !v.localService)
+      || voices.find(v => v.lang.startsWith("en"));
+    if (voice) utter.voice = voice;
+
+    utter.onstart = () => {
+      isSpeakingRef.current = true;
+      setIsSpeaking(true);
+      setAvatarState("speaking");
+      stopMic(); // Mute mic while speaking
     };
 
-    recognition.onresult = (event: any) => {
-      let interimText = "";
-      let finalText = "";
+    utter.onend = () => {
+      isSpeakingRef.current = false;
+      setIsSpeaking(false);
+      setAvatarState("listening");
+      // Resume mic after short pause
+      setTimeout(() => startMic(), 300);
+      onDone?.();
+    };
 
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalText += transcript;
-        } else {
-          interimText += transcript;
-        }
+    utter.onerror = () => {
+      isSpeakingRef.current = false;
+      setIsSpeaking(false);
+      setAvatarState("listening");
+      setTimeout(() => startMic(), 300);
+      onDone?.();
+    };
+
+    setCurrentCaption(text);
+    setAvatarState("speaking");
+    synth.speak(utter);
+  }, [setAvatarState, setCurrentCaption, setIsSpeaking]);
+
+  // ===== MIC: Continuous listening =====
+  const startMic = useCallback(() => {
+    if (typeof window === "undefined" || isSpeakingRef.current) return;
+
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { setMicStatus("off"); return; }
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch {}
+    }
+
+    const rec = new SR();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+    rec.maxAlternatives = 1;
+
+    rec.onstart = () => setMicStatus("on");
+
+    rec.onresult = (e: any) => {
+      if (isSpeakingRef.current) return; // Ignore while avatar talks
+
+      let interim = "";
+      let final = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t;
+        else interim += t;
       }
 
-      // Show interim transcript
-      if (interimText) {
-        setVisitorTranscript(interimText);
+      if (interim) {
+        setVisitorTranscript(interim);
         setMicStatus("heard");
       }
 
-      // Process final result
-      if (finalText.trim()) {
+      if (final.trim()) {
         setVisitorTranscript("");
-        setMicStatus("listening");
-        handleVisitorMessage(finalText.trim());
+        setMicStatus("on");
+        processMessage(final.trim());
       }
     };
 
-    recognition.onerror = (event: any) => {
-      if (event.error === "not-allowed") {
-        setMicStatus("off");
-        return;
+    rec.onerror = (e: any) => {
+      if (e.error !== "aborted" && e.error !== "not-allowed") {
+        setTimeout(() => { if (shouldListenRef.current && !isSpeakingRef.current) startMic(); }, 500);
       }
-      // Auto-restart on other errors
-      setMicStatus("listening");
+      if (e.error === "not-allowed") setMicStatus("off");
     };
 
-    recognition.onend = () => {
-      // Auto-restart recognition (continuous listening)
-      if (autoRestartRef.current && !isCurrentlySpeaking.current) {
-        setTimeout(() => {
-          if (autoRestartRef.current) startListening();
-        }, 300);
+    rec.onend = () => {
+      // Auto-restart
+      if (shouldListenRef.current && !isSpeakingRef.current) {
+        setTimeout(() => startMic(), 200);
       }
     };
 
-    recognition.start();
-    recognitionRef.current = recognition;
-  }, [language]);
+    rec.start();
+    recognitionRef.current = rec;
+  }, []);
 
-  const stopListening = useCallback(() => {
+  const stopMic = useCallback(() => {
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
+      try { recognitionRef.current.abort(); } catch {}
       recognitionRef.current = null;
     }
-    setMicStatus("off");
   }, []);
 
-  // ===== AUTO-START SESSION & VOICE =====
+  // ===== PROCESS MESSAGE: Instant response =====
+  const processMessage = useCallback((message: string) => {
+    if (isProcessing || isSpeakingRef.current) return;
+
+    setIsProcessing(true);
+    setAvatarState("thinking");
+    setVisitorTranscript("");
+    stopMic();
+
+    // Extract name
+    if (!visitorName) {
+      const m = message.match(/(?:name is|i am|i'm|myself)\s+(\w+)/i);
+      if (m) setVisitorName(m[1].charAt(0).toUpperCase() + m[1].slice(1));
+    }
+
+    // GET INSTANT RESPONSE (no network, no delay)
+    const result = getInstantResponse(message);
+
+    // Update mode & suggestions immediately
+    if (result.mode !== mode) setMode(result.mode as any);
+    if (result.suggestions.length > 0) setSuggestions(result.suggestions);
+
+    // Add messages to history
+    addMessage({ id: `v-${Date.now()}`, role: "visitor", content: message, timestamp: new Date() });
+    addMessage({ id: `a-${Date.now()}`, role: "assistant", content: result.response, timestamp: new Date() });
+
+    setIsProcessing(false);
+
+    // SPEAK immediately
+    speak(result.response);
+  }, [isProcessing, mode, visitorName, speak, setAvatarState, setMode, setSuggestions, addMessage, stopMic, setVisitorName]);
+
+  // ===== STARTUP =====
   useEffect(() => {
-    // Load voices
+    // Preload voices
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.getVoices();
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-      };
+      // Chrome needs this event
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     }
 
-    // Auto-start demo session
-    const demoTimeout = setTimeout(() => {
-      if (!sessionActive) {
-        const demoSessionId = `demo-${Date.now()}`;
-        startSession(demoSessionId);
-        
-        const greeting = "Hello! Welcome to our office. How can I help you today?";
-        setCurrentCaption(greeting);
-        setSuggestions([
-          "I'm here for a meeting",
-          "I want to inquire about courses",
-          "I'm looking for a job",
-          "I'm looking for an internship",
-        ]);
-        
-        // Speak the greeting automatically
-        setTimeout(() => {
-          speakText(greeting);
-        }, 500);
-      }
-    }, 1500);
+    // Start session immediately
+    const t = setTimeout(() => {
+      const id = `session-${Date.now()}`;
+      startSession(id);
+
+      const greeting = "Hello! Welcome to our office. How can I help you today?";
+      setSuggestions(["Course enquiry", "Job opportunity", "Meeting someone", "Internship"]);
+
+      // Speak greeting (mic starts after greeting ends)
+      setTimeout(() => speak(greeting), 300);
+    }, 800);
 
     return () => {
-      clearTimeout(demoTimeout);
-      autoRestartRef.current = false;
-      stopListening();
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      clearTimeout(t);
+      shouldListenRef.current = false;
+      stopMic();
+      if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Idle timeout management
-  useEffect(() => {
-    if (sessionActive && avatarState === "listening") {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      
-      idleTimerRef.current = setTimeout(() => {
-        const idleMsg = "Is there anything else I can help you with?";
-        setCurrentCaption(idleMsg);
-        speakText(idleMsg);
-        
-        // Final goodbye timeout
-        setTimeout(() => {
-          const byeMsg = "Thank you for visiting. Have a great day!";
-          setCurrentCaption(byeMsg);
-          speakText(byeMsg);
-          
-          setTimeout(() => {
-            endSession();
-            stopListening();
-          }, 4000);
-        }, 15000);
-      }, 45000); // 45 second idle timeout
-    }
-
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionActive, avatarState]);
-
-  // ===== HANDLE VISITOR MESSAGE (from voice or button click) =====
-  const handleVisitorMessage = useCallback(
-    async (message: string) => {
-      if (!sessionId || isProcessing || isCurrentlySpeaking.current) return;
-
-      setIsProcessing(true);
-      setAvatarState("thinking");
-      setVisitorTranscript("");
-      stopListening(); // Pause listening while processing
-
-      // Add visitor message
-      addMessage({
-        id: `msg-${Date.now()}`,
-        role: "visitor",
-        content: message,
-        timestamp: new Date(),
-      });
-
-      let responseText = "";
-      let responseMode = mode;
-      let responseSuggestions: string[] = [];
-
-      try {
-        const response = await aiApi.chat({
-          session_id: sessionId,
-          message,
-          language,
-          visitor_name: visitorName,
-        });
-        responseText = response.response;
-        responseMode = response.mode || mode;
-        responseSuggestions = response.suggestions || [];
-      } catch {
-        const demoResult = getDemoResponse(message);
-        responseText = demoResult.response;
-        responseMode = demoResult.mode;
-        responseSuggestions = demoResult.suggestions;
-      }
-
-      // Update state
-      if (responseMode !== mode) {
-        setMode(responseMode as any);
-      }
-      if (responseSuggestions.length > 0) {
-        setSuggestions(responseSuggestions);
-      }
-
-      // Display & SPEAK the response
-      setCurrentCaption(responseText);
-      addMessage({
-        id: `msg-${Date.now()}-ai`,
-        role: "assistant",
-        content: responseText,
-        timestamp: new Date(),
-      });
-
-      // Extract visitor name
-      if (!visitorName) {
-        const nameMatch = message.match(/(?:my name is|i am|i'm)\s+(\w+)/i);
-        if (nameMatch) {
-          setVisitorName(nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1));
-        }
-      }
-
-      setIsProcessing(false);
-      
-      // SPEAK THE RESPONSE (this will also handle state transitions)
-      speakText(responseText);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sessionId, mode, language, visitorName, isProcessing]
-  );
-
-  // Handle suggestion click
-  const handleSuggestionClick = (suggestion: string) => {
-    handleVisitorMessage(suggestion);
-  };
-
+  // ===== RENDER =====
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-avatar-bg">
-      {/* Background gradient */}
+    <div className="relative w-screen h-screen overflow-hidden bg-avatar-bg select-none">
+      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
-      
-      {/* Ambient particles effect */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-avatar-accent/20 rounded-full blur-3xl animate-pulse-slow" />
         <div className="absolute bottom-1/3 right-1/4 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl animate-pulse-slow" />
       </div>
 
-      {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center justify-between h-full p-8">
-        {/* Top bar */}
+      <div className="relative z-10 flex flex-col items-center justify-between h-full p-6">
+        {/* Header */}
         <header className="w-full flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-avatar-accent to-cyan-400 flex items-center justify-center">
@@ -448,74 +304,60 @@ export function ReceptionKiosk() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {/* Mic status indicator */}
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full transition-colors ${
-                micStatus === "listening" ? "bg-green-400 animate-pulse" :
+            {/* Live mic indicator */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${
+              micStatus === "on" ? "bg-green-500/10 border-green-500/30" :
+              micStatus === "heard" ? "bg-amber-500/10 border-amber-500/30" :
+              "bg-slate-700/50 border-slate-600/30"
+            }`}>
+              <div className={`w-2.5 h-2.5 rounded-full ${
+                micStatus === "on" ? "bg-green-400 animate-pulse" :
                 micStatus === "heard" ? "bg-amber-400 animate-pulse" :
                 "bg-slate-500"
               }`} />
-              <span className="text-slate-400 text-xs">
-                {micStatus === "listening" ? "🎤 Mic Active" :
-                 micStatus === "heard" ? "🎤 Hearing..." :
-                 "🎤 Mic Off"}
+              <span className={`text-xs font-medium ${
+                micStatus === "on" ? "text-green-400" :
+                micStatus === "heard" ? "text-amber-400" :
+                "text-slate-500"
+              }`}>
+                {micStatus === "on" ? "Listening" : micStatus === "heard" ? "Hearing you..." : "Mic Off"}
               </span>
             </div>
             <StatusIndicator state={avatarState} isConnected={true} mode={mode} />
           </div>
         </header>
 
-        {/* Avatar area */}
-        <div className="flex-1 flex items-center justify-center w-full max-w-2xl">
+        {/* Avatar */}
+        <div className="flex-1 flex items-center justify-center w-full">
           <Avatar3D state={avatarState} isSpeaking={isSpeaking} />
         </div>
 
-        {/* Visitor's voice transcript (what they're saying) */}
+        {/* Visitor transcript (what they're saying RIGHT NOW) */}
         {visitorTranscript && (
-          <div className="w-full max-w-3xl mb-2">
-            <div className="bg-slate-700/40 backdrop-blur-sm rounded-xl px-5 py-3 border border-slate-600/30">
-              <p className="text-slate-300 text-sm italic text-center">
+          <div className="w-full max-w-2xl mb-2 animate-fade-in">
+            <div className="bg-green-500/5 backdrop-blur-sm rounded-xl px-5 py-3 border border-green-500/20">
+              <p className="text-green-300 text-base text-center">
                 🎤 &ldquo;{visitorTranscript}&rdquo;
               </p>
             </div>
           </div>
         )}
 
-        {/* Caption / Avatar response area */}
-        <div className="w-full max-w-3xl mb-4">
-          <CaptionDisplay
-            text={currentCaption}
-            isVisible={!!currentCaption}
-            state={avatarState}
-          />
+        {/* Avatar's response caption */}
+        <div className="w-full max-w-3xl mb-3">
+          <CaptionDisplay text={currentCaption} isVisible={!!currentCaption} state={avatarState} />
         </div>
 
-        {/* Suggestion buttons (touch fallback) */}
-        <div className="w-full max-w-3xl space-y-4">
+        {/* Suggestions (touch fallback) */}
+        <div className="w-full max-w-3xl">
           {sessionActive && suggestions.length > 0 && avatarState === "listening" && (
-            <SuggestionButtons
-              suggestions={suggestions}
-              onSelect={handleSuggestionClick}
-            />
-          )}
-
-          {/* Idle state message */}
-          {!sessionActive && (
-            <div className="text-center animate-fade-in">
-              <p className="text-slate-300 text-2xl font-light mb-2">
-                Welcome — I&apos;m your AI Assistant
-              </p>
-              <p className="text-slate-500 text-sm">
-                Step closer to begin a conversation
-              </p>
-            </div>
+            <SuggestionButtons suggestions={suggestions} onSelect={processMessage} />
           )}
         </div>
 
         {/* Footer */}
-        <footer className="w-full flex items-center justify-between mt-4 text-slate-600 text-xs">
-          <span>🔊 Voice-enabled — Just speak naturally</span>
-          <span>{new Date().toLocaleTimeString()}</span>
+        <footer className="w-full flex items-center justify-center mt-3">
+          <span className="text-slate-500 text-xs">🔊 Just speak naturally — I&apos;m listening</span>
         </footer>
       </div>
     </div>
