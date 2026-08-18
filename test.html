@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Avatar Receptionist - Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #1a1a2e; color: white; padding: 20px; min-height: 100vh; }
+        h1 { text-align: center; margin-bottom: 10px; color: #0ea5e9; }
+        .status { text-align: center; margin-bottom: 20px; padding: 10px; border-radius: 8px; }
+        .connected { background: #065f46; }
+        .disconnected { background: #7f1d1d; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .panel { background: #16213e; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #0f3460; }
+        .buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; justify-content: center; }
+        button { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.2s; }
+        button:hover { transform: scale(1.05); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-new { background: #0ea5e9; color: white; }
+        .btn-returning { background: #8b5cf6; color: white; }
+        .btn-mic { background: #22c55e; color: white; }
+        .btn-mic.active { background: #ef4444; }
+        .btn-end { background: #6b7280; color: white; }
+        .btn-send { background: #f59e0b; color: black; }
+        .messages { max-height: 400px; overflow-y: auto; padding: 10px; }
+        .message { margin-bottom: 10px; padding: 10px 15px; border-radius: 12px; max-width: 80%; }
+        .message.user { background: #0ea5e9; margin-left: auto; text-align: right; }
+        .message.assistant { background: #374151; margin-right: auto; }
+        .message.system { background: #854d0e; font-size: 12px; text-align: center; margin: 0 auto; }
+        .input-row { display: flex; gap: 10px; margin-top: 15px; }
+        .input-row input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: white; font-size: 14px; }
+        .log { background: #0f172a; border-radius: 8px; padding: 15px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 11px; color: #94a3b8; }
+        .avatar-face { width: 150px; height: 150px; margin: 0 auto 20px; border-radius: 50%; background: radial-gradient(circle, #2d3748, #1a202c); display: flex; align-items: center; justify-content: center; font-size: 60px; border: 3px solid #374151; transition: all 0.3s; }
+        .avatar-face.speaking { border-color: #0ea5e9; box-shadow: 0 0 20px #0ea5e9; animation: pulse 1s infinite; }
+        .avatar-face.listening { border-color: #22c55e; box-shadow: 0 0 20px #22c55e; }
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        .interim { color: #9ca3af; font-style: italic; padding: 5px 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Avatar Receptionist</h1>
+        <div id="status" class="status disconnected">⏳ Connecting to server...</div>
+
+        <div class="panel">
+            <div id="avatar" class="avatar-face">🙂</div>
+            <div class="buttons">
+                <button class="btn-new" id="btnNew" onclick="startSession(false)" disabled>🆕 New Visitor</button>
+                <button class="btn-returning" id="btnReturning" onclick="startSession(true)" disabled>🔄 Returning (Rahul)</button>
+                <button class="btn-mic" id="btnMic" onclick="toggleMic()" disabled>🎤 Start Mic</button>
+                <button class="btn-end" id="btnEnd" onclick="endSession()" disabled>⏹ End Session</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3 style="margin-bottom:10px;">💬 Conversation</h3>
+            <div class="messages" id="messages"></div>
+            <div class="interim" id="interim"></div>
+            <div class="input-row">
+                <input type="text" id="textInput" placeholder="Type a message (or use mic)..." onkeypress="if(event.key==='Enter')sendText()">
+                <button class="btn-send" onclick="sendText()">Send ➤</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3 style="margin-bottom:10px;">📋 Debug Log</h3>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <audio id="audio"></audio>
+
+    <script>
+        const WS_URL = 'ws://' + window.location.host;
+        const CLIENT_ID = 'test_' + Date.now();
+        let ws = null;
+        let sessionId = null;
+        let recognition = null;
+        let isListening = false;
+
+        function log(msg) {
+            const logEl = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logEl.innerHTML += `[${time}] ${msg}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+
+        function setStatus(connected) {
+            const el = document.getElementById('status');
+            if (connected) {
+                el.className = 'status connected';
+                el.textContent = '✅ Connected to server';
+                document.getElementById('btnNew').disabled = false;
+                document.getElementById('btnReturning').disabled = false;
+            } else {
+                el.className = 'status disconnected';
+                el.textContent = '❌ Disconnected - retrying in 5s...';
+                document.getElementById('btnNew').disabled = true;
+                document.getElementById('btnReturning').disabled = true;
+            }
+        }
+
+        function addMessage(role, text) {
+            const el = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.className = 'message ' + role;
+            div.textContent = text;
+            el.appendChild(div);
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function setAvatar(state) {
+            const el = document.getElementById('avatar');
+            el.className = 'avatar-face ' + state;
+            if (state === 'speaking') el.textContent = '🗣️';
+            else if (state === 'listening') el.textContent = '👂';
+            else if (state === 'thinking') el.textContent = '🤔';
+            else el.textContent = '🙂';
+        }
+
+        // === WebSocket ===
+        function connect() {
+            log('Connecting to ' + WS_URL + '/ws/conversation/' + CLIENT_ID);
+            
+            try {
+                ws = new WebSocket(WS_URL + '/ws/conversation/' + CLIENT_ID);
+            } catch(e) {
+                log('ERROR: ' + e.message);
+                setTimeout(connect, 5000);
+                return;
+            }
+
+            ws.onopen = () => {
+                log('✅ WebSocket CONNECTED!');
+                setStatus(true);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                log('← Received: ' + data.type + (data.text ? ' "' + data.text.substring(0,50) + '..."' : ''));
+                
+                if (data.type === 'response') {
+                    if (data.text) {
+                        addMessage('assistant', data.text);
+                    }
+                    if (data.session_id) {
+                        sessionId = data.session_id;
+                        document.getElementById('btnEnd').disabled = false;
+                        document.getElementById('btnMic').disabled = false;
+                    }
+                    // Play audio if available
+                    if (data.audio) {
+                        setAvatar('speaking');
+                        playAudio(data.audio);
+                    } else {
+                        setAvatar('listening');
+                    }
+                } else if (data.type === 'error') {
+                    log('⚠️ Server error: ' + data.message);
+                    addMessage('system', '⚠️ ' + data.message);
+                } else if (data.type === 'state') {
+                    log('State: ' + data.state);
+                    if (data.state === 'ended') {
+                        sessionId = null;
+                        setAvatar('');
+                    }
+                } else if (data.type === 'pong') {
+                    // ignore
+                }
+            };
+
+            ws.onclose = () => {
+                log('WebSocket closed. Reconnecting in 5s...');
+                setStatus(false);
+                ws = null;
+                setTimeout(connect, 5000);
+            };
+
+            ws.onerror = (err) => {
+                log('WebSocket error');
+            };
+        }
+
+        function send(data) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(data));
+                log('→ Sent: ' + data.type);
+                return true;
+            }
+            log('ERROR: WebSocket not connected!');
+            return false;
+        }
+
+        // === Actions ===
+        function startSession(isReturning) {
+            const msg = {
+                type: 'start_session',
+                match_status: isReturning ? 'match_found' : 'no_match',
+                person_name: isReturning ? 'Rahul' : undefined,
+                visit_count: isReturning ? 5 : 0,
+            };
+            setAvatar('thinking');
+            addMessage('system', isReturning ? '🔄 Simulating returning visitor (Rahul)...' : '🆕 Simulating new visitor...');
+            send(msg);
+        }
+
+        function endSession() {
+            if (sessionId) {
+                send({ type: 'end_session', session_id: sessionId });
+                sessionId = null;
+                document.getElementById('btnEnd').disabled = true;
+                document.getElementById('btnMic').disabled = true;
+                setAvatar('');
+                addMessage('system', '⏹ Session ended');
+            }
+        }
+
+        function sendText() {
+            const input = document.getElementById('textInput');
+            const text = input.value.trim();
+            if (!text) return;
+            if (!sessionId) {
+                addMessage('system', '⚠️ Start a session first!');
+                return;
+            }
+            addMessage('user', text);
+            setAvatar('thinking');
+            send({ type: 'speech', text: text, is_final: true });
+            input.value = '';
+        }
+
+        // === Speech Recognition ===
+        function toggleMic() {
+            if (isListening) {
+                stopMic();
+            } else {
+                startMic();
+            }
+        }
+
+        function startMic() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                addMessage('system', '⚠️ Speech recognition not supported in this browser. Use Chrome!');
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-IN';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        const text = event.results[i][0].transcript.trim();
+                        if (text) {
+                            addMessage('user', text);
+                            setAvatar('thinking');
+                            send({ type: 'speech', text: text, is_final: true });
+                            document.getElementById('interim').textContent = '';
+                        }
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
+                }
+                if (interim) {
+                    document.getElementById('interim').textContent = '🎤 ' + interim + '...';
+                }
+            };
+
+            recognition.onerror = (e) => {
+                log('Mic error: ' + e.error);
+                if (e.error !== 'no-speech') stopMic();
+            };
+
+            recognition.onend = () => {
+                if (isListening) {
+                    try { recognition.start(); } catch(e) { stopMic(); }
+                }
+            };
+
+            recognition.start();
+            isListening = true;
+            setAvatar('listening');
+            const btn = document.getElementById('btnMic');
+            btn.textContent = '🔴 Stop Mic';
+            btn.className = 'btn-mic active';
+            log('🎤 Microphone started');
+        }
+
+        function stopMic() {
+            if (recognition) {
+                isListening = false;
+                recognition.stop();
+                recognition = null;
+            }
+            const btn = document.getElementById('btnMic');
+            btn.textContent = '🎤 Start Mic';
+            btn.className = 'btn-mic';
+            document.getElementById('interim').textContent = '';
+            log('🎤 Microphone stopped');
+        }
+
+        // === Audio Playback ===
+        function playAudio(base64) {
+            try {
+                const binary = atob(base64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                const blob = new Blob([bytes], { type: 'audio/mp3' });
+                const url = URL.createObjectURL(blob);
+                const audio = document.getElementById('audio');
+                audio.src = url;
+                audio.onended = () => {
+                    setAvatar('listening');
+                    log('Audio playback ended');
+                };
+                audio.play().catch(e => {
+                    log('Audio play error: ' + e.message);
+                    setAvatar('listening');
+                });
+            } catch(e) {
+                log('Audio error: ' + e.message);
+                setAvatar('listening');
+            }
+        }
+
+        // Start connection
+        connect();
+
+        // Keep alive with ping every 30s
+        setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                send({ type: 'ping' });
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

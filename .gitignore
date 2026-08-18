@@ -1,0 +1,81 @@
+# ============================
+# AI Avatar Receptionist
+# ============================
+
+# Environment & Secrets
+.env
+.env.local
+.env.production
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# AI/ML Models (large files)
+*.onnx
+*.pt
+*.pth
+*.bin
+*.h5
+*.tflite
+models/
+!models/.gitkeep
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+*.js.map
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+docker-data/
+
+# Database
+*.db
+*.sqlite3
+mysql_data/
+
+# Logs
+*.log
+logs/
+
+# Uploads & Temp
+uploads/
+temp/
+tmp/
+*.tmp
+
+# Cache
+.cache/
+face_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# OS
+Thumbs.db
+.DS_Store
